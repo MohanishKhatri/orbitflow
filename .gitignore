@@ -1,0 +1,9 @@
+virtualenv/
+
+__pycache__/
+*.py[cod]
+
+.env
+
+*sqlite3
+db.sqlite3
