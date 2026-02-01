@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WorkFlow, WorkFlowStep
+from .models import WorkFlow, WorkFlowStep, Execution
 
 
 class WorkFlowSerializer(serializers.ModelSerializer):
@@ -7,6 +7,7 @@ class WorkFlowSerializer(serializers.ModelSerializer):
         model = WorkFlow
         fields = ['id', 'created_at', 'title', 'is_active']
         read_only_fields = ['id', 'created_at']
+
 
 class WorkFlowStepSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,3 +28,10 @@ class WorkFlowStepSerializer(serializers.ModelSerializer):
             )
 
         return data
+
+
+class ExecutionSerializer(serializers.ModelSerializer):
+    workflow_title = serializers.CharField(source='workflow.title', read_only=True)
+    class Meta:
+        model = Execution
+        fields = ['id', 'workflow', 'workflow_title', 'status', 'current_step', 'started_at', 'finished_at']

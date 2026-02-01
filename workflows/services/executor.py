@@ -30,6 +30,7 @@ def run_workflow(id):
     execution.status = Execution.STEP_SUCCESSFUL
     execution.finished_at = timezone.now()
     execution.save()
+    return execution
     
 
     
