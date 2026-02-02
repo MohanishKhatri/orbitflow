@@ -17,6 +17,7 @@ class WorkFlowStep(models.Model):
     workflow = models.ForeignKey('WorkFlow', on_delete = models.CASCADE, related_name = 'steps')
     step_number = models.IntegerField()
     config = models.JSONField()
+    type = models.CharField(max_length=50, default="HTTP")
 
     def __str__(self):
         return f"WorkFlow {self.workflow} - Step {self.step_number}"

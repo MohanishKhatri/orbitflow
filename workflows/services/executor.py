@@ -1,5 +1,7 @@
 from workflows.models import WorkFlow, Execution, WorkFlowStep
 from django.utils import timezone
+from workflows.registry import get_runner_class
+import workflows.steps
 
 def run_workflow(id):
     workflow=WorkFlow.objects.get(id=id)
@@ -10,26 +12,37 @@ def run_workflow(id):
     execution.status = Execution.STEP_RUNNING
     execution.save()
 
+    context = {"execution_id": execution.id,
+               "workflow_id": workflow.id,
+               "steps": {}
+               }
+    
+
     workflow_steps = workflow.steps.all().order_by('step_number')
 
-    for step in workflow_steps:
-        try:
+    try:
+        for step in workflow_steps:
             execution.current_step = step.step_number
-            # if(step.step_number == 3):
-            #     raise Exception("Simulated step failure")
-        except:
-            execution.status = Execution.STEP_FAILED
-            execution.finished_at = timezone.now()
             execution.save()
-            return
-     
-        execution.save()
-        print(f'step is done')
-            
 
-    execution.status = Execution.STEP_SUCCESSFUL
-    execution.finished_at = timezone.now()
-    execution.save()
+            print(f"[*] Processing step {step.step_number} ({step.type})..." )
+            RunnerClass = get_runner_class(step.type)
+            runner = RunnerClass(step.config, context)
+            runner.validate()
+            result = runner.execute()
+            context['steps'][str(step.step_number)] = result
+            print(f" -> Success: {result.get('status_code', 'OK')}")
+                
+
+        execution.status = Execution.STEP_SUCCESSFUL
+    
+    except Exception as e:
+        print(f"[!] Error {e}")
+        execution.status = Execution.STEP_FAILED
+
+    finally:
+        execution.finished_at = timezone.now()
+        execution.save()
     return execution
     
 
