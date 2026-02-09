@@ -42,4 +42,26 @@ class Execution(models.Model):
 
     def __str__(self):
         return f"Execution {self.id} of WorkFlow {self.workflow_id}"
+    
+
+class ExecutionStepLog(models.Model):
+    STATUS_RUNNING = 'R'
+    STATUS_SUCCESSFUL = 'S'
+    STATUS_FAILED = 'F'
+    STATUS_CHOICES = [
+        (STATUS_RUNNING, 'Running'),
+        (STATUS_SUCCESSFUL, 'Successful'),
+        (STATUS_FAILED, 'Failed')
+    ]
+    status = models.CharField(max_length=1, choices=STATUS_CHOICES)
+    execution = models.ForeignKey('Execution', on_delete=models.CASCADE, related_name='step_logs')
+    step_number = models.IntegerField()
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    output = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Execution {self.execution_id} - Step {self.step_number} Log"
+
 

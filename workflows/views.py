@@ -6,8 +6,8 @@ from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIV
 from rest_framework.views import APIView
 from rest_framework import status
 
-from .models import WorkFlow, WorkFlowStep, Execution
-from .serializers import WorkFlowSerializer, WorkFlowStepSerializer, ExecutionSerializer
+from .models import WorkFlow, WorkFlowStep, Execution, ExecutionStepLog
+from .serializers import WorkFlowSerializer, WorkFlowStepSerializer, ExecutionSerializer, ExecutionStepLogSerializer
 from .pagination import DefaultPagination
 
 
@@ -111,3 +111,12 @@ class ExecutionRetryView(APIView):
             status=status.HTTP_201_CREATED
         )
 
+
+class ExecutionStepLogsView(ListAPIView):
+    serializer_class = ExecutionStepLogSerializer
+    pagination_class = DefaultPagination
+
+    def get_queryset(self):
+        execution_id = self.kwargs['execution_id']
+        queryset = ExecutionStepLog.objects.filter(execution_id=execution_id).order_by('step_number')
+        return queryset
