@@ -2,6 +2,7 @@ from workflows.models import WorkFlow, Execution, WorkFlowStep, ExecutionStepLog
 from django.utils import timezone
 from workflows.registry import get_runner_class
 import workflows.steps
+from .variable_resolver import resolve_config
 
 def run_workflow(id):
     workflow=WorkFlow.objects.get(id=id)
@@ -36,7 +37,9 @@ def run_workflow(id):
 
             try:
                 RunnerClass = get_runner_class(step.type)
-                runner = RunnerClass(step.config, context)
+                # resolving variables with past step outputs and context values
+                resolved_config = resolve_config(step.config, context)
+                runner = RunnerClass(resolved_config, context)
                 runner.validate()
                 result = runner.execute()
                 context['steps'][str(step.step_number)] = result
