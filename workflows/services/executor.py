@@ -3,6 +3,7 @@ from django.utils import timezone
 from workflows.registry import get_runner_class
 import workflows.steps
 from .variable_resolver import resolve_config
+from .condition_evaluator import evaluate_condition
 
 def run_workflow(id):
     workflow=WorkFlow.objects.get(id=id)
@@ -34,6 +35,14 @@ def run_workflow(id):
                 status=ExecutionStepLog.STATUS_RUNNING
             )
 
+            # for conditonal execution based on run_if config and previous step outputs and context values
+            run_if = step.config.get('run_if')
+            if run_if:
+                if not evaluate_condition(run_if, context):
+                    step_log.status = ExecutionStepLog.STATUS_SKIPPED
+                    step_log.finished_at = timezone.now()
+                    step_log.save()
+                    continue
 
             try:
                 RunnerClass = get_runner_class(step.type)

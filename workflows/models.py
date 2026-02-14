@@ -48,10 +48,12 @@ class ExecutionStepLog(models.Model):
     STATUS_RUNNING = 'R'
     STATUS_SUCCESSFUL = 'S'
     STATUS_FAILED = 'F'
+    STATUS_SKIPPED = 'K'
     STATUS_CHOICES = [
         (STATUS_RUNNING, 'Running'),
         (STATUS_SUCCESSFUL, 'Successful'),
-        (STATUS_FAILED, 'Failed')
+        (STATUS_FAILED, 'Failed'),
+        (STATUS_SKIPPED, 'Skipped')
     ]
     status = models.CharField(max_length=1, choices=STATUS_CHOICES)
     execution = models.ForeignKey('Execution', on_delete=models.CASCADE, related_name='step_logs')
