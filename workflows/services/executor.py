@@ -5,7 +5,7 @@ import workflows.steps
 from .variable_resolver import resolve_config
 from .condition_evaluator import evaluate_condition
 
-def run_workflow(id):
+def run_workflow(id, trigger_data=None):
     workflow=WorkFlow.objects.get(id=id)
     if not workflow.is_active:
         print(f'worlflow is inactive')
@@ -16,7 +16,8 @@ def run_workflow(id):
 
     context = {"execution_id": execution.id,
                "workflow_id": workflow.id,
-               "steps": {}
+               "steps": {},
+               "trigger": trigger_data or {}  # for webhook based triggering
                }
     
 
@@ -35,16 +36,18 @@ def run_workflow(id):
                 status=ExecutionStepLog.STATUS_RUNNING
             )
 
-            # for conditonal execution based on run_if config and previous step outputs and context values
-            run_if = step.config.get('run_if')
-            if run_if:
-                if not evaluate_condition(run_if, context):
-                    step_log.status = ExecutionStepLog.STATUS_SKIPPED
-                    step_log.finished_at = timezone.now()
-                    step_log.save()
-                    continue
 
             try:
+
+                # for conditonal execution based on run_if config and previous step outputs and context values
+                run_if = step.config.get('run_if')
+                if run_if:
+                    if not evaluate_condition(run_if, context):
+                        step_log.status = ExecutionStepLog.STATUS_SKIPPED
+                        step_log.finished_at = timezone.now()
+                        step_log.save()
+                        continue
+
                 RunnerClass = get_runner_class(step.type)
                 # resolving variables with past step outputs and context values
                 resolved_config = resolve_config(step.config, context)
@@ -72,7 +75,6 @@ def run_workflow(id):
         execution.status = Execution.STEP_SUCCESSFUL
     
     except Exception as e:
-        print(f"[!] Error {e}")
         execution.status = Execution.STEP_FAILED
 
     finally:

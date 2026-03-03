@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import workflow_execution_handler,WorkFlowListCreateView,WorkFlowDetailView,WorkFlowStepsListCreateView
-from .views import ExecutionListView,ExecutionDetailView,ExecutionRetryView, ExecutionStepLogsView
+from .views import ExecutionListView,ExecutionDetailView,ExecutionRetryView, ExecutionStepLogsView, WebHookTriggerView
 
 urlpatterns=[
     path('workflows/<int:workflow_id>/execute/',workflow_execution_handler),
@@ -10,5 +10,6 @@ urlpatterns=[
     path('workflows/executions/', ExecutionListView.as_view()),
     path('workflows/executions/<int:pk>/',  ExecutionDetailView.as_view()),
     path('workflows/executions/<int:execution_id>/retry/', ExecutionRetryView.as_view()),
-    path('workflows/executions/<int:execution_id>/step-runs/', ExecutionStepLogsView.as_view())
+    path('workflows/executions/<int:execution_id>/step-runs/', ExecutionStepLogsView.as_view()),
+    path('webhook/<int:workflow_id>/', WebHookTriggerView.as_view())
 ]

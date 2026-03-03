@@ -120,3 +120,33 @@ class ExecutionStepLogsView(ListAPIView):
         execution_id = self.kwargs['execution_id']
         queryset = ExecutionStepLog.objects.filter(execution_id=execution_id).order_by('step_number')
         return queryset
+    
+
+class WebHookTriggerView(APIView):
+
+    def post(self, request, workflow_id):
+
+        workflow = get_object_or_404(WorkFlow, id=workflow_id)    
+
+        if not workflow.is_active:
+            return Response({"error": "Workflow is inactive"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        payload = {
+            "body": request.data,
+            "headers": dict(request.headers),
+            "query_params": request.query_params
+        }
+
+        try:
+            execution = run_workflow(workflow.id, trigger_data=payload)
+            return Response({
+                "status": "success",
+                "message": "Workflow triggered",
+                "execution_id": execution.id
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "error": "Workflow execution failed",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
