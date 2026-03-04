@@ -39,3 +39,26 @@ class HttpStepRunner(BaseStepRunner):
         }
 
 STEP_REGISTRY['HTTP'] = HttpStepRunner
+
+class DiscordStepRunner(BaseStepRunner):
+
+    def validate(self):
+        if "url" not in self.config:
+            raise ValueError("URL is required in cofig for DiscordStepRunner")
+        if "content" not in self.config:
+            raise ValueError("content is required for DiscordStepRunner")
+        
+    def execute(self):
+        url= self.config["url"]
+        content= self.config["content"]
+        payload= { "content" : content}
+
+        response = requests.post(url, json= payload)
+        if not response.ok:
+            raise RuntimeError(f"Webhook failed to execute: {response.status_code} - {response.text}")
+        
+        return {
+            "status_code": response.status_code
+        }
+    
+STEP_REGISTRY['DISCORD_WEBHOOK']= DiscordStepRunner

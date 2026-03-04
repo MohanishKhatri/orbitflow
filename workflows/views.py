@@ -131,14 +131,17 @@ class WebHookTriggerView(APIView):
         if not workflow.is_active:
             return Response({"error": "Workflow is inactive"}, status=status.HTTP_400_BAD_REQUEST)
         
-        payload = {
-            "body": request.data,
+        # Merge body data at root level for easy access: {{trigger.field}}
+        trigger_data = {
+            **request.data,  # Body fields at root level coz variable resolving was failing
+            # its convinient to have it direct access else we need to do trigger.data.field for each field
+            # but after this we can directly do trigger.fielf
             "headers": dict(request.headers),
-            "query_params": request.query_params
+            "query_params": dict(request.query_params)
         }
 
         try:
-            execution = run_workflow(workflow.id, trigger_data=payload)
+            execution = run_workflow(workflow.id, trigger_data=trigger_data)
             return Response({
                 "status": "success",
                 "message": "Workflow triggered",

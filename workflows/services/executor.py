@@ -1,7 +1,7 @@
 from workflows.models import WorkFlow, Execution, WorkFlowStep, ExecutionStepLog
 from django.utils import timezone
-from workflows.registry import get_runner_class
-import workflows.steps
+from .registry import get_runner_class
+from . import steps
 from .variable_resolver import resolve_config
 from .condition_evaluator import evaluate_condition
 
