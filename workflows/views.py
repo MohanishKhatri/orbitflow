@@ -16,7 +16,8 @@ from .pagination import DefaultPagination
 @api_view(['POST'])
 def workflow_execution_handler(request, workflow_id):
     get_object_or_404(WorkFlow, id=workflow_id)
-    run_workflow(workflow_id)
+    webhook_data = request.data
+    run_workflow(workflow_id, trigger_data=webhook_data)
     return Response(f'Workflow {workflow_id} execution started.')
 
 
