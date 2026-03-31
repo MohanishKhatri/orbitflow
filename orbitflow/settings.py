@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_spectacular',
     'rest_framework',
     'workflows',
 ]
@@ -121,3 +122,20 @@ STATIC_URL = 'static/'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+
+# celery settings
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_TIMEZONE = TIME_ZONE
+
+# drf spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'OrbitFlow API',
+    'DESCRIPTION': 'API documentation for the OrbitFlow background workflow engine.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False, # Hides the raw schema endpoint from the UI itself
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}

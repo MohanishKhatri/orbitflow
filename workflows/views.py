@@ -9,10 +9,12 @@ from rest_framework import status
 from .models import WorkFlow, WorkFlowStep, Execution, ExecutionStepLog
 from .serializers import WorkFlowSerializer, WorkFlowStepSerializer, ExecutionSerializer, ExecutionStepLogSerializer
 from .pagination import DefaultPagination
+from .tasks import run_workflow_task
 
 
 # Create your views here.
 
+# its literally same as webhook view (though it was first one i made xd)
 @api_view(['POST'])
 def workflow_execution_handler(request, workflow_id):
     get_object_or_404(WorkFlow, id=workflow_id)
@@ -98,18 +100,21 @@ class ExecutionRetryView(APIView):
                 status=status.HTTP_409_CONFLICT
             )
         
-        # Making a new execution
-        new_execution = run_workflow(old_execution.workflow.id)
-        if new_execution is None:
+        if not old_execution.workflow.is_active:
             return Response(
-                {"error": "Workflow is inactive, cannot retry execution!"},
+                {"error": "Workflow is inactive"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Making a new execution
+        new_execution = Execution.objects.create(workflow=old_execution.workflow, status=Execution.STEP_PENDING)
+        run_workflow_task.delay(new_execution.id)
+
         return Response(
             {"message" : "Execution retried successfully",
              "execution_id" : new_execution.id
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_202_ACCEPTED
         )
 
 
@@ -142,15 +147,19 @@ class WebHookTriggerView(APIView):
         }
 
         try:
-            execution = run_workflow(workflow.id, trigger_data=trigger_data)
+            execution = Execution.objects.create(workflow=workflow, status=Execution.STEP_PENDING)
+
+            run_workflow_task.delay(execution.id, trigger_data = trigger_data)
+
             return Response({
                 "status": "success",
                 "message": "Workflow triggered",
                 "execution_id": execution.id
-            }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_202_ACCEPTED)
         
         except Exception as e:
             return Response({
                 "error": "Workflow execution failed",
                 "details": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
