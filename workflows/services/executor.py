@@ -5,14 +5,12 @@ from . import steps
 from .variable_resolver import resolve_config
 from .condition_evaluator import evaluate_condition
 
-def run_workflow(id, trigger_data=None):
-    workflow=WorkFlow.objects.get(id=id)
-    if not workflow.is_active:
-        print(f'worlflow is inactive')
-        return
-    execution = Execution.objects.create(workflow=workflow)
+def run_workflow(execution_id, trigger_data=None):
+
+    execution = Execution.objects.get(id= execution_id)
     execution.status = Execution.STEP_RUNNING
     execution.save()
+    workflow = execution.workflow
 
     context = {"execution_id": execution.id,
                "workflow_id": workflow.id,
