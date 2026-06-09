@@ -10,49 +10,67 @@ from .models import WorkFlow, WorkFlowStep, Execution, ExecutionStepLog
 from .serializers import WorkFlowSerializer, WorkFlowStepSerializer, ExecutionSerializer, ExecutionStepLogSerializer
 from .pagination import DefaultPagination
 from .tasks import run_workflow_task
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 # Create your views here.
 
-# its literally same as webhook view (though it was first one i made xd)
-@api_view(['POST'])
-def workflow_execution_handler(request, workflow_id):
-    get_object_or_404(WorkFlow, id=workflow_id)
-    webhook_data = request.data
-    run_workflow(workflow_id, trigger_data=webhook_data)
-    return Response(f'Workflow {workflow_id} execution started.')
+# # its literally same as webhook view (though it was first one i made xd)
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def workflow_execution_handler(request, workflow_id):
+#     get_object_or_404(WorkFlow, id=workflow_id, owner=request.user)
+#     webhook_data = request.data
+#     run_workflow(workflow_id, trigger_data=webhook_data)
+#     return Response(f'Workflow {workflow_id} execution started.')
 
 
 class WorkFlowListCreateView(ListCreateAPIView):
-    queryset = WorkFlow.objects.all()
+    permission_classes = [IsAuthenticated]
+   
     serializer_class = WorkFlowSerializer
+    def get_queryset(self):
+        # return only workflows of the logged in user
+        queryset = WorkFlow.objects.filter(owner=self.request.user)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class WorkFlowDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = WorkFlow.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = WorkFlowSerializer
+
+    def get_queryset(self):
+        # return only workflows of the logged in user
+        queryset = WorkFlow.objects.filter(owner=self.request.user)
+        return queryset
 
 
 class WorkFlowStepsListCreateView(ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WorkFlowStepSerializer
     def get_queryset(self):
         workflow_id = self.kwargs['workflow_id']
-        queryset = WorkFlowStep.objects.filter(workflow_id=workflow_id)
+        queryset = WorkFlowStep.objects.filter(workflow_id=workflow_id, workflow__owner=self.request.user).order_by('step_number')
         return queryset
 
-    serializer_class = WorkFlowStepSerializer
 
     def perform_create(self, serializer):
         workflow_id = self.kwargs['workflow_id']
+        get_object_or_404(WorkFlow, id=workflow_id, owner=self.request.user)
         serializer.save(workflow_id=workflow_id)
 
 
 class ExecutionListView(ListAPIView):
-    
+
+    permission_classes = [IsAuthenticated]
     serializer_class = ExecutionSerializer
     pagination_class = DefaultPagination
 
     def get_queryset(self):
-        queryset = Execution.objects.all()
+        queryset = Execution.objects.filter(workflow__owner=self.request.user)
 
         # extracting data from query
         workflow = self.request.query_params.get('workflow')
@@ -74,15 +92,19 @@ class ExecutionListView(ListAPIView):
 
 
 class ExecutionDetailView(RetrieveAPIView):
-    queryset = Execution.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = ExecutionSerializer
+
+    def get_queryset(self):
+        return Execution.objects.filter(workflow__owner=self.request.user)
 
 
 class ExecutionRetryView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, execution_id):
         # If requested execution is not in failed state
-        old_execution = get_object_or_404(Execution, id=execution_id)
+        old_execution = get_object_or_404(Execution, id=execution_id, workflow__owner=request.user)
         if old_execution.status != Execution.STEP_FAILED:
             return Response(
                 {"error": "Only failed executions can be retried!"},
@@ -107,7 +129,11 @@ class ExecutionRetryView(APIView):
             )
         
         # Making a new execution
-        new_execution = Execution.objects.create(workflow=old_execution.workflow, status=Execution.STEP_PENDING)
+        new_execution = Execution.objects.create(
+            workflow=old_execution.workflow,
+            status=Execution.STEP_PENDING,
+            triggered_by=request.user
+        )
         run_workflow_task.delay(new_execution.id)
 
         return Response(
@@ -119,16 +145,18 @@ class ExecutionRetryView(APIView):
 
 
 class ExecutionStepLogsView(ListAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = ExecutionStepLogSerializer
     pagination_class = DefaultPagination
 
     def get_queryset(self):
         execution_id = self.kwargs['execution_id']
-        queryset = ExecutionStepLog.objects.filter(execution_id=execution_id).order_by('step_number')
+        queryset = ExecutionStepLog.objects.filter(execution_id=execution_id, execution__workflow__owner=self.request.user).order_by('step_number')
         return queryset
     
 
 class WebHookTriggerView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, workflow_id):
 
@@ -147,9 +175,14 @@ class WebHookTriggerView(APIView):
         }
 
         try:
-            execution = Execution.objects.create(workflow=workflow, status=Execution.STEP_PENDING)
+            user = request.user if request.user.is_authenticated else None
+            execution = Execution.objects.create(
+                workflow=workflow,
+                status=Execution.STEP_PENDING,
+                triggered_by=user,
+            )
 
-            run_workflow_task.delay(execution.id, trigger_data = trigger_data)
+            run_workflow_task.delay(execution.id, trigger_data=trigger_data)
 
             return Response({
                 "status": "success",

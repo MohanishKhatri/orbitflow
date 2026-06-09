@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,8 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'drf_spectacular',
+
+
     'rest_framework',
+    'rest_framework_simplejwt',
+
+    
     'workflows',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -137,5 +144,25 @@ SPECTACULAR_SETTINGS = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
+
+SIMPLE_JWT = {
+    # Extend access token lifetime (e.g., to 1 day or 7 days)
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1), 
+    
+    # Extend refresh token lifetime as well if needed
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    
+    # Optional: Keep these default headers if you are using Bearer tokens
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
