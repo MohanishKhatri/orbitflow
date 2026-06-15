@@ -12,6 +12,10 @@ from .pagination import DefaultPagination
 from .tasks import run_workflow_task
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
+import hmac
+import hashlib
+from django.conf import settings
+
 
 # Create your views here.
 
@@ -61,6 +65,14 @@ class WorkFlowStepsListCreateView(ListCreateAPIView):
         workflow_id = self.kwargs['workflow_id']
         get_object_or_404(WorkFlow, id=workflow_id, owner=self.request.user)
         serializer.save(workflow_id=workflow_id)
+
+
+class WorkFlowStepDetailView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WorkFlowStepSerializer
+
+    def get_queryset(self):
+        return WorkFlowStep.objects.filter(workflow__owner=self.request.user)
 
 
 class ExecutionListView(ListAPIView):
@@ -164,6 +176,17 @@ class WebHookTriggerView(APIView):
 
         if not workflow.is_active:
             return Response({"error": "Workflow is inactive"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify webhook token
+        token = request.query_params.get('token')
+        expected_token = hmac.new(
+            settings.SECRET_KEY.encode('utf-8'),
+            str(workflow.id).encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()[:20]
+
+        if not token or not hmac.compare_digest(token, expected_token):
+            return Response({"error": "Invalid or missing webhook token"}, status=status.HTTP_403_FORBIDDEN)
         
         # Merge body data at root level for easy access: {{trigger.field}}
         trigger_data = {

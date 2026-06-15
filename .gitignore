@@ -4,6 +4,7 @@ __pycache__/
 *.py[cod]
 
 .env
+**/.env
 
 *sqlite3
 db.sqlite3
@@ -13,3 +14,7 @@ test_engine.py
 
 .vscode/
 .github/
+
+node_modules/
+dist/
+*.log

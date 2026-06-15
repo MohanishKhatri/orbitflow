@@ -22,9 +22,9 @@ class HttpStepRunner(BaseStepRunner):
 
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=payload)
+                response = requests.get(url, headers=headers, params=payload, timeout=10)
             elif method == 'POST':
-                response = requests.post(url, headers=headers, json=payload)
+                response = requests.post(url, headers=headers, json=payload, timeout=10)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
@@ -58,7 +58,7 @@ class DiscordStepRunner(BaseStepRunner):
         payload= { "content" : content}
 
         try:
-            response = requests.post(url, json= payload)
+            response = requests.post(url, json=payload, timeout=10)
         except requests.RequestException as e:
             raise RuntimeError(f"Discord webhook request failed: {e}")
         if not response.ok:

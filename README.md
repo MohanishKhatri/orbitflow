@@ -1,130 +1,137 @@
-
------
-
 # OrbitFlow
 
-   
+OrbitFlow is a full-stack workflow automation engine. It allows users to design, build, and track multi-step logic pipelines through a modern React frontend dashboard backed by a Django REST Framework API and Celery+Redis task workers for asynchronous step executions.
 
-OrbitFlow is a Django REST Framework-based workflow automation engine designed to manage and execute multi-step logic pipelines. It utilizes a distributed task queue (Celery + Redis) to handle I/O-bound operations asynchronously, ensuring non-blocking API performance.
+---
 
 ## Features
+*   **Asynchronous Processing:** Long-running pipeline steps are executed in background Celery workers.
+*   **Vibrant React Dashboard:** Dark-themed dashboard built with Vite + React + TailwindCSS for managing workflows, adding steps, running triggers, and checking live execution logs.
+*   **Step Logic & Context:** Resolve variables dynamically between steps using double-brace syntax `{{steps.1.response_body}}`.
+*   **Conditional Execution:** Gate pipeline steps with conditionals (`run_if`).
+*   **Immutable Execution Auditing:** Review live-polled detailed step logs, outputs, and errors for every single run.
 
-  * **Asynchronous Pipelines:** Offloads execution logic to background workers; triggers return a `202 Accepted` status immediately.
-  * **Smart Branching:** Conditional step execution using `run_if` expressions to handle complex routing logic.
-  * **Dynamic Context:** Built-in variable resolution engine that injects state and trigger data across sequential steps.
-  * **Observability:** Real-time execution tracking with immutable step-level logs and error tracebacks.
-  * **OpenAPI Documentation:** Integrated Swagger UI for interactive endpoint testing and schema discovery.
+---
 
 ## Supported Integrations
+*   **HTTP Request:** Trigger arbitrary GET/POST APIs with custom payloads and headers.
+*   **Discord Webhook:** Broadcast messages directly into Discord channels.
+*   **SMTP Email:** Send emails to recipients via authenticated SMTP servers.
 
-The engine supports the following native step types:
+---
 
-  * **HTTP:** Custom GET/POST requests with configurable headers and payloads.
-  * **DISCORD\_WEBHOOK:** Automated alerts and messages pushed to Discord channels.
-  * **SMTP\_EMAIL:** Email dispatch via authenticated SMTP with dynamic subject/body resolution.
+## File Structure
 
------
+```text
+OrbitFlow/
+├── orbitflow/                    # Django Configuration
+│   ├── celery.py                 # Celery app initialization
+│   ├── settings.py               # Database, CORS, JWT and Celery config
+│   └── urls.py                   # Routing (inc. Swagger & Webhooks)
+├── workflows/                    # Django App (Logic Engine)
+│   ├── tasks.py                  # Celery background tasks
+│   ├── services/                 # Execution services
+│   │   ├── executor.py           # Core execution loop
+│   │   ├── steps.py              # HTTP, Discord, and SMTP execution logic
+│   │   ├── variable_resolver.py  # Variable resolution engine
+│   │   └── condition_evaluator.py # run_if evaluator (simpleeval)
+│   ├── models.py                 # Workflow, Step, and Execution schemas
+│   ├── views.py                  # API endpoints (Viewsets)
+│   └── serializers.py            # Serializers & validation
+├── frontend/                     # React Frontend Application (Vite + React)
+│   ├── src/
+│   │   ├── components/           # Shared components (Navbar, Loaders, ErrorBanner)
+│   │   ├── context/              # Authentication context (AuthContext)
+│   │   ├── pages/                # Views (WorkflowDashboard, StepBuilder, ExecutionsList, ExecutionTracker, LoginPage, SignupPage)
+│   │   ├── api.js                # Axios configuration and JWT refreshing
+│   │   └── App.jsx               # Routes and layouts
+│   ├── .env                      # Local frontend configuration
+│   └── package.json              # Frontend dependencies
+├── db.sqlite3                    # Local development database
+├── docker-compose.yml            # Redis docker configuration
+└── requirements.txt              # Backend python dependencies
+```
 
-## Core Architecture
-
-1.  **Workflow:** The container defining the automation logic and step sequence.
-2.  **Step:** An isolated unit of work (e.g., HTTP call, Email) within a Workflow.
-3.  **Execution:** A specific runtime instance of a Workflow (Status: `Pending`, `Running`, `Success`, `Failed`).
-4.  **Step Log:** Detailed record of a Step's execution, including input/output payloads and failure logs.
-
------
+---
 
 ## Quick Start
 
-### 1\. Infrastructure Setup
-
-OrbitFlow requires a Redis broker for task management.
-
+### 1. Infrastructure Setup (Redis)
+Start the Redis broker required by Celery:
 ```bash
 docker run -d -p 6379:6379 redis:7-alpine
 ```
 
-### 2\. Local Environment Setup
+### 2. Backend Setup
+1.  Duplicate the `.env.example` file and rename it to `.env`:
+    ```bash
+    cp .env.example .env
+    ```
+2.  Install python dependencies and run database migrations:
+    ```bash
+    # Activate virtual environment
+    source virtualenv/bin/activate
 
+    # Install dependencies & migrate
+    pip install -r requirements.txt
+    python manage.py migrate
+    ```
+
+### 3. Frontend Setup
+Install npm packages:
 ```bash
-# Setup virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies and migrate
-pip install -r requirements.txt
-python manage.py migrate
+cd frontend
+npm install
 ```
 
-### 3\. Execution
+### 4. Running OrbitFlow
+Open three terminal windows to run the stack:
 
-The system requires both the API server and the background worker to run simultaneously:
+*   **Terminal 1 (Backend API):**
+    ```bash
+    python manage.py runserver
+    ```
+*   **Terminal 2 (Celery Workers):**
+    ```bash
+    celery -A orbitflow worker --loglevel=info
+    ```
+*   **Terminal 3 (Vite Frontend):**
+    ```bash
+    cd frontend && npm run dev
+    ```
 
-**Terminal 1 (API Server):**
-
-```bash
-python manage.py runserver
-```
-
-**Terminal 2 (Celery Worker):**
-
-```bash
-celery -A orbitflow worker --loglevel=info
-```
-
------
+---
 
 ## API Reference
 
 ### Documentation
+*   `GET /api/docs/` — Swagger UI API portal.
 
-  * `GET /api/docs/` - Interactive Swagger UI portal.
-  * `GET /api/schema/` - Raw OpenAPI 3.0 JSON schema.
+### Workflows & Steps
+*   `GET /api/workflows/` — List workflows.
+*   `POST /api/workflows/` — Create a workflow.
+*   `GET /api/workflows/<id>/` — Retrieve details of a specific workflow.
+*   `PATCH /api/workflows/<id>/` — Update workflow (e.g. rename or toggle `is_active` status).
+*   `DELETE /api/workflows/<id>/` — Delete a workflow.
+*   `GET /api/workflows/<workflow_id>/steps/` — List steps for a workflow.
+*   `POST /api/workflows/<workflow_id>/steps/` — Create a step.
+*   `PATCH /api/workflows/steps/<id>/` — Edit a step.
+*   `DELETE /api/workflows/steps/<id>/` — Delete a step.
 
-### Workflows
+### Webhook Triggers
+*   `POST /api/webhook/<workflow_id>/?token=<webhook_token>` — Trigger a workflow run.
 
-  * `GET /api/workflows/` - List all workflows.
-  * `POST /api/workflows/` - Create a new workflow.
-  * `POST /api/workflows/<id>/steps/` - Append a new step to a workflow.
+### Executions
+*   `GET /api/workflows/executions/` — List execution runs.
+*   `POST /api/workflows/executions/<id>/retry/` — Re-queue a failed execution.
+*   `GET /api/workflows/executions/<id>/step-runs/` — Retrieve sequential logs for a run.
 
-### Executions & Webhooks
-
-  * `POST /api/webhook/<workflow_id>/` - Trigger a workflow asynchronously via external webhook.
-  * `GET /api/workflows/executions/` - List executions (Filters: `?workflow=ID`, `?status=F`).
-  * `POST /api/workflows/executions/<id>/retry/` - Re-queue a failed execution.
-  * `GET /api/workflows/executions/<id>/step-runs/` - Retrieve I/O logs for an execution.
-
------
-
-## Project Structure
-
-```text
-OrbitFlow/
-├── orbitflow/                    # Project Configuration
-│   ├── celery.py                 # Celery app initialization
-│   ├── settings.py               # Django & Redis/Celery config
-│   └── urls.py                   # Root URL routing (inc. Swagger)
-├── workflows/                    # Main Application
-│   ├── tasks.py                  # Celery background tasks
-│   ├── services/                 # Logic Engine
-│   │   ├── executor.py           # State machine & execution logic
-│   │   ├── steps.py              # Runner implementations
-│   │   ├── variable_resolver.py  # Context injection logic
-│   │   └── condition_evaluator.py # run_if logic parser
-│   ├── models.py                 # Core Schema
-│   ├── views.py                  # API Endpoints
-│   └── serializers.py            # Data validation/serialization
-└── docker-compose.yml            # Local infrastructure orchestration
-```
-
------
+---
 
 ## Execution Logic
 
 ### Dynamic Variable Resolution
-
 Steps support double-brace syntax to pull data from the execution context:
-
 ```json
 {
   "type": "HTTP",
@@ -139,17 +146,13 @@ Steps support double-brace syntax to pull data from the execution context:
 ```
 
 ### Conditional Logic
-
 Use the `run_if` field to gate step execution based on previous results:
-
 ```json
 {
   "type": "SMTP_EMAIL",
   "config": {
-    "run_if": "steps.1.status_code == 200",
+    "run_if": "{{steps.1.status_code}} == 200",
     "subject": "Sync Success"
   }
 }
 ```
-
------
