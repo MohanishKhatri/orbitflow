@@ -8,6 +8,7 @@ import WorkflowDashboard from './pages/WorkflowDashboard';
 import StepBuilder from './pages/StepBuilder';
 import ExecutionsList from './pages/ExecutionsList';
 import ExecutionTracker from './pages/ExecutionTracker';
+import NotFoundPage from './pages/NotFoundPage';
 
 function Protected({ children }) {
   const { user, isReady } = useAuth();
@@ -39,7 +40,7 @@ export default function App() {
           <Route path="/executions" element={<Protected><ExecutionsList /></Protected>} />
           <Route path="/execution/:id" element={<Protected><ExecutionTracker /></Protected>} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>

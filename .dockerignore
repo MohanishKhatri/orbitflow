@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+virtualenv/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# Local databases
+*.sqlite3
+
+# Tests
+tests/
+
+# IDEs
+.vscode/
+.idea/
+
+# Frontend (built separately)
+frontend/
+node_modules/
+
+# Docker
+docker-compose*.yml
+
+# Documentation
+README.md
